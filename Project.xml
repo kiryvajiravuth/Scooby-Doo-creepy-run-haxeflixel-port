@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="utf-8"?>
+<project xmlns="http://lime.openfl.org/project/1.0.4"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xsi:schemaLocation="http://lime.openfl.org/project/1.0.4 http://lime.openfl.org/xsd/project-1.0.4.xsd">
+
+	<app title="Scooby-Doo: Creepy Run" file="ScoobyDooCreepyRun" main="Main" version="1.0.0"
+		company="me" />
+
+	<app preloader="flixel.system.FlxPreloader" />
+
+	<set name="SWF_VERSION" value="11.8" />
+
+	<window fps="60" background="#000000" hardware="true" vsync="true" />
+
+	<window if="html5" width="640" height="480" resizable="true" />
+
+	<window if="desktop" width="1280" height="720" orientation="landscape" fullscreen="false"
+		resizable="true" />
+
+	<window if="mobile" orientation="landscape" fullscreen="true" width="0" height="0" />
+
+	<set name="BUILD_DIR" value="export" />
+	<source path="source" />
+
+	<assets path="assets/images/icons" rename="icons" type="template" />
+	<assets path="assets" />
+
+	<haxelib name="flixel" />
+
+	<haxelib name="flixel-addons" />
+
+	<haxedef name="FLX_NO_HEALTH" />
+
+	<haxedef name="FLX_NO_MOUSE" if="mobile" />
+	<haxedef name="FLX_NO_KEYBOARD" if="mobile" />
+	<haxedef name="FLX_NO_TOUCH" if="desktop" />
+	<haxedef name="FLX_NO_DEBUG" unless="debug" />
+
+	<haxedef name="NAPE_RELEASE_BUILD" unless="debug" />
+
+	<haxedef name="message.reporting" value="pretty" />
+	<assets path="assets/fonts" rename="fonts" include="*.ttf" />
+	<icon path="assets/images/icons/Icon.png" />
+</project>
