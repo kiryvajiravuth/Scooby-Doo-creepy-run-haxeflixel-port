@@ -122,6 +122,9 @@ class PlayState extends FlxState
     // instance field managing properties for the main player character sprite
     var shaggy:FlxSprite;
 
+	// secondary sprite used for custom collision detection during running states
+	var runhitbox:FlxSprite;
+
     // splash graphic element triggered when critical capture events pass
     var deathFX:FlxSprite;              
     
@@ -230,6 +233,25 @@ class PlayState extends FlxState
 
         // attach the finished character model straight to active layout nodes
         add(shaggy);
+
+		// construct the invisible collision proxy used during run sequences
+		runhitbox = new FlxSprite(shaggyX, shaggyY);
+		runhitbox.frames = shaggy.frames;
+		runhitbox.animation.addByPrefix("idle", "Idle", 24, true);
+		runhitbox.animation.play("idle");
+		runhitbox.visible = false;
+		runhitbox.antialiasing = true;
+
+		// apply properties matching the idle state as requested
+		var idleScale:Float = animScales.get("idle");
+		runhitbox.scale.set(idleScale, idleScale);
+		runhitbox.updateHitbox();
+		runhitbox.setSize(runhitbox.width + playerHitboxPadding, runhitbox.height + playerHitboxPadding);
+
+		var idleOffset:Array<Float> = animOffsets.get("idle");
+		runhitbox.offset.set(idleOffset[0], idleOffset[1]);
+
+		add(runhitbox);
 
         // generate baseline structure points processing final capture sequence graphics
         deathFX = new FlxSprite(0, 0);
@@ -514,8 +536,16 @@ class PlayState extends FlxState
         // evaluate overlapping bounds if recovery frames are currently down
         if (!isStunned)
         {
+			var colSprite:FlxSprite = shaggy;
+			if (movementState == "running")
+			{
+				runhitbox.setPosition(shaggy.x, shaggy.y);
+				colSprite = runhitbox;
+			}
+
             // query framework collision maps checking the player sprite against active hazards
-            FlxG.overlap(shaggy, obstacles, function(player:FlxSprite, obsObj:FlxSprite) {
+			FlxG.overlap(colSprite, obstacles, function(player:FlxSprite, obsObj:FlxSprite)
+			{
                 // securely cast item types to examine specialized obstacle data fields
                 var obs = cast(obsObj, Obstacle);
                 
@@ -732,7 +762,14 @@ class PlayState extends FlxState
         // -------------------------------------------------------------
         // module 4: collision overlap (death)
         // -------------------------------------------------------------
-        if (FlxG.overlap(shaggy, skelly))
+		var colSprite:FlxSprite = shaggy;
+		if (movementState == "running")
+		{
+			runhitbox.setPosition(shaggy.x, shaggy.y);
+			colSprite = runhitbox;
+		}
+
+		if (FlxG.overlap(colSprite, skelly))
         {
             // switch status tracking states to match the dead keyword tag
             movementState = "dead";
