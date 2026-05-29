@@ -137,6 +137,17 @@ class PlayState extends FlxState
     // text tracking tag checking active poses against engine states
     var movementState:String = "idle"; 
 
+	// player hitbox expansion amount for slightly larger collision detection
+	var playerHitboxPadding:Float = 16.0;
+
+	var gameOverOpened:Bool = false;
+
+	// when true, cap the next frame's elapsed to avoid large jumps after closing a substate
+	var clampNextElapsed:Bool = false;
+
+	// ignore player input for a short number of frames after returning from a substate
+	var ignoreInputFrames:Int = 0;
+
     // accumulator tracking internal frame time across start runtime blocks
     var prepTimer:Float = 0.0;
 
@@ -280,10 +291,18 @@ class PlayState extends FlxState
 
         // force alignment tracking lines to recalculate around current texture metrics
         shaggy.updateHitbox();
+		updatePlayerHitbox();
 
         // shift frame offsets to keep visual center pins aligned during action transitions
         shaggy.offset.set(offset[0], offset[1]);
     }
+
+	function updatePlayerHitbox():Void
+	{
+		// keep collision area slightly larger than the visible sprite
+		var padding:Float = playerHitboxPadding;
+		shaggy.setSize(shaggy.width + padding, shaggy.height + padding);
+	}
 
     // digital clock parser calculating raw decimal metrics into clean timestamp loops
     function formatTime(seconds:Float):String 
@@ -343,22 +362,39 @@ class PlayState extends FlxState
     {
         super.update(elapsed);
 
+		// if a substate is already open, pause gameplay updates entirely
+		if (subState != null)
+			return;
+
         // bypass all movement processing logic if global state paths match defeat labels
         if (movementState == "dead")
         {
             // evaluate progress flags to determine if defeat animations wrapped up playback
-            if (deathFX.animation.finished) 
+			if (deathFX.animation.finished && !gameOverOpened) 
             {
+				// mark the game over transition as already opened
+				gameOverOpened = true;
+
                 // clean up raw clock tracking numbers into display ready timestamps
                 var finalTime:String = formatTime(totalTimeSurvived);
 
                 // shift game contexts directly into the gameover substate layer
+				clampNextElapsed = true;
+				ignoreInputFrames = 1;
                 openSubState(new GameOverState(score, finalTime));
             }
 
             // kill method runtime branches to prevent background update loops from processing
             return;
         }
+
+		// if we're resuming from a substate, cap the elapsed to avoid large jump frames
+		if (clampNextElapsed)
+		{
+			if (elapsed > 0.05)
+				elapsed = 0.05;
+			clampNextElapsed = false;
+		}
 
         // track cumulative runtime counts by appending frame step times
         totalTimeSurvived += elapsed;
@@ -384,7 +420,10 @@ class PlayState extends FlxState
         if (FlxG.keys.justPressed.ESCAPE)
         {
             // pop pause states smoothly over active gameplay displays
+			clampNextElapsed = true;
+			ignoreInputFrames = 1;
             openSubState(new PausedState());
+			return;
         }
 
         // initialize standard boolean containers tracking movement status queries
@@ -392,8 +431,16 @@ class PlayState extends FlxState
         var keyDown:Bool = false;
         var keyRight:Bool = false;
 
+		// if we recently returned from a substate, ignore input and freeze movement for one frame
+		var skipInput:Bool = false;
+		if (ignoreInputFrames > 0)
+		{
+			skipInput = true;
+			ignoreInputFrames -= 1;
+		}
+
         // block user control reading loops entirely if the stun countdown is active
-        if (!isStunned)
+		if (!isStunned && !skipInput)
         {
             // monitor jump keys mapping cross directional arrow parameters and standard typing layouts
             keyUp = FlxG.keys.justPressed.UP || FlxG.keys.justPressed.W;
@@ -410,8 +457,8 @@ class PlayState extends FlxState
             isCrouching = false;
         }
 
-        // evaluate timing variables to trigger new obstacle spawns when clear
-        if (!isStunned)
+		// evaluate timing variables to trigger new obstacle spawns when the player is moving
+		if (!isStunned && keyRight && !skipInput)
         {
             // increment hazard countdown parameters using frame loop steps
             obstacleSpawnTimer += elapsed;
@@ -426,9 +473,15 @@ class PlayState extends FlxState
                 spawnObstacle();
             }
         }
+		else
+		{
+			// when not moving, reset the spawn timer so no obstacles spawn while idle
+			obstacleSpawnTimer = 0.0;
+		}
 
         // determine scrolling translation multipliers depending on character running inputs
-        var scrollMultiplier:Float = keyRight ? 1.0 : 0.2; 
+		// only move when the player is actively pressing the run key
+		var scrollMultiplier:Float = keyRight ? 1.0 : 0.0; 
 
         // compute adjusted world speeds by combining base scroll values with scale variables
         var currentSpeed:Float = currentScrollSpeed * scrollMultiplier;
@@ -649,28 +702,32 @@ class PlayState extends FlxState
         // -------------------------------------------------------------
         // module 3: dynamic skeleton chase engine
         // -------------------------------------------------------------
-        if (keyRight && !isStunned)
-        {
-            // translate background backdrop assets to create moving stage illusions
-            bgScrollLayer.x += currentScrollSpeed * elapsed;
+		if (!skipInput)
+		{
+			if (keyRight && !isStunned)
+			{
+				// translate background backdrop assets to create moving stage illusions
+				bgScrollLayer.x += currentScrollSpeed * elapsed;
 
-            // push monster coordinate vectors leftward to simulate retreat loops
-            skelly.x -= skellyRetreatSpeed * elapsed;
-            
-            // clamp retreat paths to prevent chasers from shifting completely offscreen
-            if (skelly.x < -400.0) {
-                // secure monster position anchors at set leftward boundaries
-                skelly.x = -400.0;
-            }
-        }
-        else 
-        {
-            // accelerate forward velocity tracking paths if players stop or crash
-            skelly.x += skellyMaxCatchupSpeed * elapsed;
-        }
+				// push monster coordinate vectors leftward to simulate retreat loops
+				skelly.x -= skellyRetreatSpeed * elapsed;
+
+				// clamp retreat paths to prevent chasers from shifting completely offscreen
+				if (skelly.x < -400.0)
+				{
+					// secure monster position anchors at set leftward boundaries
+					skelly.x = -400.0;
+				}
+			}
+			else
+			{
+				// accelerate forward velocity tracking paths if players stop or crash
+				skelly.x += skellyMaxCatchupSpeed * elapsed;
+			}
+		}
 
         // evaluate frame heights to anchor chasing models tightly along floor layers
-        skelly.y = shaggyY - (skelly.height - skellyFloorOffset);
+		skelly.y = shaggyY - (skelly.height - skellyFloorOffset);
 
         // -------------------------------------------------------------
         // module 4: collision overlap (death)

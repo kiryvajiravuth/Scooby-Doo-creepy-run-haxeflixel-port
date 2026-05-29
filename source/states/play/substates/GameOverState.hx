@@ -8,6 +8,7 @@ import flixel.text.FlxText;
 import flixel.tweens.FlxEase;
 import flixel.tweens.FlxTween;
 import flixel.util.FlxColor;
+import states.menu.MainMenuState;
 
 class GameOverState extends FlxSubState
 {
@@ -127,8 +128,8 @@ class GameOverState extends FlxSubState
             FlxTween.tween(bg, {alpha: 0}, 0.4, {
                 ease: FlxEase.quartIn,
                 onComplete: function(twn:FlxTween) {
-                    // return to the previous state
-                    close();
+					// switch back to the main menu state
+					FlxG.switchState(() -> new MainMenuState());
                 }
             });
         }

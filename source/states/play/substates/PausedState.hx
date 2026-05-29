@@ -30,6 +30,10 @@ class PausedState extends FlxSubState
         // set the mouse cursor to visible to allow interaction with buttons
         FlxG.mouse.visible = true;
 
+		// pause background music while paused to avoid audio stacking
+		if (FlxG.sound.music != null)
+			FlxG.sound.music.pause();
+
         // allocate the scrolling background layer using the credit background asset
         bg = new FlxBackdrop("assets/images/ui/CreditsBG/CreditsBG.png");
         // set the velocity to make the background tile move constantly
@@ -102,7 +106,9 @@ class PausedState extends FlxSubState
             FlxTween.tween(bg, {alpha: 0}, 0.4, {
                 ease: FlxEase.quartIn,
                 onComplete: function(twn:FlxTween) {
-                    // invoke the close method to return to playstate
+					// resume background music and invoke the close method to return to playstate
+					if (FlxG.sound.music != null)
+						FlxG.sound.music.resume();
                     close();
                 }
             });
