@@ -40,5 +40,7 @@
 
 	<haxedef name="message.reporting" value="pretty" />
 	<assets path="assets/fonts" rename="fonts" include="*.ttf" />
+	<assets path="assets/shaders" rename="assets/shaders" type="text" />
+
 	<icon path="assets/images/icons/Icon.png" />
 </project>

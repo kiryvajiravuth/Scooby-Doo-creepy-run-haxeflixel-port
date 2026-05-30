@@ -4,12 +4,16 @@ import flixel.FlxG;
 import flixel.FlxSprite;
 import flixel.FlxState;
 import flixel.addons.display.FlxBackdrop;
+import flixel.addons.display.FlxRuntimeShader;
 import flixel.effects.FlxFlicker;
 import flixel.graphics.frames.FlxAtlasFrames;
 import flixel.group.FlxGroup.FlxTypedGroup;
 import flixel.text.FlxText;
 import flixel.util.FlxAxes;
 import flixel.util.FlxColor;
+import openfl.display.BitmapData;
+import openfl.geom.Point;
+import openfl.utils.Assets;
 import states.play.substates.GameOverState;
 import states.play.substates.PausedState;
 
@@ -822,6 +826,9 @@ class Obstacle extends FlxSprite
     // validation variable tracking if items cleared player boundaries safely
     public var passed:Bool;
 
+	// static variable to cache the shader code so we don't hit the disk for every single obstacle
+	static var shaderCode:String = "";
+
     // constructor engine assigning coordinate parameters and graphic paths
     public function new(x:Float, y:Float, high:Bool)
     {
@@ -833,19 +840,29 @@ class Obstacle extends FlxSprite
         // initialize clear tracker markers at standard default false values
         this.passed = false;
         
+		// Define how much extra space (padding) we want for the shader outline
+		var padding:Int = 20;
+		var graphicPath:String = isHigh ? "assets/images/Gameplay/obstacles/duck/pumpkin.png" : "assets/images/Gameplay/obstacles/jump/grave.png";
+
+		// Load the original image and create a larger transparent canvas
+		var originalBitmap:BitmapData = Assets.getBitmapData(graphicPath);
+		var paddedBitmap:BitmapData = new BitmapData(originalBitmap.width + padding, originalBitmap.height + padding, true, 0);
+
+		// Copy the original image into the center of the larger canvas
+		paddedBitmap.copyPixels(originalBitmap, originalBitmap.rect, new Point(padding / 2, padding / 2));
+
         // examine path variables to load matching graphic illustration files
         if (isHigh) 
         {
-            // bind pumpkin image mappings from folder structures to create high items
-            loadGraphic("assets/images/Gameplay/obstacles/duck/pumpkin.png");
+			// Load the newly created padded version instead of the raw file
+			loadGraphic(paddedBitmap);
 
             // adjust layout dimensions uniformly to scale up pumpkin textures
             scale.set(1.4, 1.4);
         } 
         else 
         {
-            // bind tombstone image mappings from folder structures to create ground items
-            loadGraphic("assets/images/Gameplay/obstacles/jump/grave.png");
+			loadGraphic(paddedBitmap);
 
             // adjust layout dimensions uniformly to scale up tombstone textures
             scale.set(1.5, 1.5);
@@ -856,5 +873,28 @@ class Obstacle extends FlxSprite
 
         // update internal physical lines to match newly selected dimensions
         updateHitbox();
+		// IMPORTANT: Shrink the hitbox back down so the invisible padding
+		// doesn't make Scooby "trip" on the air before touching the object.
+		width -= padding * scale.x;
+		height -= padding * scale.y;
+		offset.add((padding / 2) * scale.x, (padding / 2) * scale.y);
+
+		// --- SHADER LOGIC ---
+		// 1. Load the shader file if we haven't already
+		if (shaderCode == "")
+		{
+			// Make sure your .frag file is at assets/shaders/outline.frag
+			shaderCode = Assets.getText("assets/shaders/outline.frag");
+		}
+
+		// 2. If the code exists, create the shader and apply it
+		if (shaderCode != null && shaderCode != "")
+		{
+			var outlineShader = new FlxRuntimeShader(shaderCode);
+			outlineShader.setFloat("outlineSize", 2.0);
+			// Use an array [R, G, B] for the color (White in this case)
+			outlineShader.setFloatArray("outlineColor", [1.0, 1.0, 1.0]);
+			this.shader = outlineShader;
+		}
     }
 }
