@@ -63,7 +63,7 @@ class LOLItsTheGoofyAssTeam extends FlxSubState
             "vuth : coder-commenter\n" +
             "seng : coder\n" +
             "hak : debugger\n" +
-            "sovathana : tester";
+            "sovathana : does nothing and dies";
 
         // bind team roster data into a central formatted display canvas
         names = new FlxText(0, 150, FlxG.width, staffList, 32);
