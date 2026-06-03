@@ -37,7 +37,7 @@ class LOLItsTheGoofyAssTeam extends FlxSubState
             "vuth : coder-commenter\n" +
             "seng : coder\n" +
             "hak : debugger\n" +
-            "sovathana : does nothing and dies";
+            "sovathana : tester";
 
 		names = new FlxText(0, 150, FlxG.width, staffList, 32);
 		names.setFormat("fonts/FridayNightFunkinTypeFont.ttf", 32, FlxColor.WHITE, CENTER);
